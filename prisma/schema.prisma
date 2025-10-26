@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+enum FlagState {
+  ON
+  OFF
+  PERCENTAGE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(VIEWER)
+  overrides    UserOverride[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Environment {
+  id        String  @id @default(cuid())
+  key       String  @unique
+  name      String
+  flags     FlagAssignment[]
+  overrides UserOverride[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feature {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  description String?
+  archived    Boolean @default(false)
+  flags       FlagAssignment[]
+  overrides   UserOverride[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FlagAssignment {
+  id            String     @id @default(cuid())
+  featureId     String
+  environmentId String
+  state         FlagState
+  rolloutPct    Int?       @db.SmallInt
+  feature       Feature    @relation(fields: [featureId], references: [id])
+  environment   Environment@relation(fields: [environmentId], references: [id])
+
+  @@unique([featureId, environmentId], name: "feature_env_unique")
+}
+
+model UserOverride {
+  id            String     @id @default(cuid())
+  featureId     String
+  environmentId String
+  userId        String
+  state         FlagState  // only ON or OFF should be used here
+  feature       Feature    @relation(fields: [featureId], references: [id])
+  environment   Environment@relation(fields: [environmentId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@unique([featureId, environmentId, userId], name: "feature_env_user_unique")
+}
+
+enum AuditEvent {
+  FLAG_SET_STATE
+  OVERRIDE_UPSERT
+  OVERRIDE_DELETE
+  ENV_CREATE
+  FEATURE_CREATE
+  FEATURE_UPDATE
+  FEATURE_DELETE
+  USER_CREATE
+  USER_ROLE_UPDATE
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorUserId   String
+  action        String   // e.g. "FLAG_TOGGLE"
+  featureKey    String?
+  environmentKey String?
+  payload       Json?
+  createdAt     DateTime @default(now())
+}
+
+model WebhookEndpoint {
+  id         String            @id @default(cuid())
+  name       String
+  url        String
+  secret     String            // used for HMAC signatures
+  isActive   Boolean           @default(true)
+  // Which events to receive. Use Json array of strings (AuditEvent names).
+  eventTypes Json?
+  deliveries WebhookDelivery[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model WebhookDelivery {
+  id         String            @id @default(cuid())
+  endpointId String
+  endpoint   WebhookEndpoint   @relation(fields: [endpointId], references: [id])
+  action     String            // AuditEvent
+  status     String            // "SUCCESS" | "FAILED"
+  responseCode Int?
+  error      String?
+  payload    Json
+  createdAt  DateTime          @default(now())
+}
