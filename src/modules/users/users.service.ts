@@ -1,10 +1,37 @@
 import { prisma } from '../../db/prisma';
+import { paginate } from '../../utils/pagination';
 import { hashPassword } from '../auth/auth.service';
 
-import type { Role } from '@prisma/client';
+import type { Prisma, Role } from '@prisma/client';
 
-export function listUsers() {
-  return prisma.user.findMany({ select: { id: true, email: true, role: true, createdAt: true } });
+export type ListUsersParams = {
+  page: number;
+  pageSize: number;
+  q?: string;
+  orderBy: Prisma.UserOrderByWithRelationInput[]; // already validated/whitelisted by controller
+};
+
+export type ListResult<T> = { items: T[]; total: number };
+
+export async function listUsers(params: ListUsersParams) {
+  const { page, pageSize, q, orderBy } = params;
+
+  const where: Prisma.UserWhereInput = q
+    ? { OR: [{ email: { contains: q, mode: 'insensitive' as Prisma.QueryMode } }] }
+    : {};
+
+  const [items, total] = await Promise.all([
+    prisma.user.findMany({
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: orderBy.length ? orderBy : [{ createdAt: 'desc' }],
+      where,
+      select: { id: true, email: true, role: true, createdAt: true },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return { items, total };
 }
 
 export async function createUserAdmin(email: string, password: string, role: Role) {
