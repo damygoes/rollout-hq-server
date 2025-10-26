@@ -33,6 +33,10 @@ export default [
         require: 'readonly',
         exports: 'readonly',
         global: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     plugins: {

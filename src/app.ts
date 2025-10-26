@@ -9,6 +9,7 @@ import featureRoutes from './modules/features/features.routes';
 import flagRoutes from './modules/flags/flags.routes';
 import overrideRoutes from './modules/overrides/overrides.routes';
 import userRoutes from './modules/users/users.routes';
+import webhookRoutes from './modules/webhooks/webhook.routes';
 
 const app = express();
 app.use(cors());
@@ -23,6 +24,7 @@ app.use('/environments', envRoutes);
 app.use('/features', featureRoutes);
 app.use('/overrides', overrideRoutes);
 app.use('/flags', flagRoutes);
+app.use('/webhooks', webhookRoutes);
 
 app.use(errorHandler);
 

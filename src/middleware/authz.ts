@@ -4,20 +4,8 @@ import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 import { fail } from '../utils/response';
 
+import type { JwtUser } from '../types/jwt';
 import type { NextFunction, Request, Response } from 'express';
-
-export interface JwtUser {
-  id: string;
-  email: string;
-  role: 'ADMIN' | 'VIEWER';
-}
-
-// Extend Express Request type
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: JwtUser;
-  }
-}
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;

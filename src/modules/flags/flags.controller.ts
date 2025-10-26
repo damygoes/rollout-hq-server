@@ -1,4 +1,5 @@
 import { ok, fail } from '../../utils/response';
+import { createAuditLog } from '../audit/audit.service';
 
 import { evaluateSchema, setStateSchema } from './flags.schemas';
 import { evaluateFlag, setFlagState } from './flags.service';
@@ -18,7 +19,18 @@ export async function putState(req: Request, res: Response) {
   const { featureKey } = req.params;
   const parsed = setStateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
+
   const { env, state, rolloutPct } = parsed.data;
   const updated = await setFlagState(featureKey, env, state as FlagState, rolloutPct);
+
+  // AUDIT + WEBHOOK
+  await createAuditLog({
+    actor: req.user!,
+    action: 'FLAG_SET_STATE',
+    featureKey,
+    environmentKey: env,
+    payload: { state, rolloutPct },
+  });
+
   res.json(ok(updated));
 }
