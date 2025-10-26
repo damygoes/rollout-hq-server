@@ -1,3 +1,5 @@
+import bcrypt from 'bcrypt';
+
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../errors/AppError';
 import { hashPassword } from '../auth/auth.service';
@@ -35,19 +37,30 @@ export async function listUsers(params: ListUsersParams) {
 }
 
 export async function createUserAdmin(email: string, password: string, role: Role) {
-  const passwordHash = await hashPassword(password);
-  return prisma.user.create({
+  const exists = await prisma.user.findUnique({ where: { email } });
+  if (exists) throw AppError.conflict('Email already in use');
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const created = await prisma.user.create({
     data: { email, passwordHash, role },
     select: { id: true, email: true, role: true, createdAt: true },
   });
+
+  return created;
 }
 
-export function updateUserRole(userId: string, role: Role) {
-  return prisma.user.update({
+export async function updateUserRole(userId: string, role: Role) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) throw AppError.notFound('User not found');
+
+  const updated = await prisma.user.update({
     where: { id: userId },
     data: { role },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true, role: true, createdAt: true },
   });
+
+  return updated;
 }
 
 export async function getUserById(id: string) {

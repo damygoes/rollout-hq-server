@@ -25,17 +25,23 @@ export async function getUsers(req: Request, res: Response) {
 }
 
 export async function postUser(req: Request, res: Response) {
-  const parsed = createUserSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
-  const { email, password, role } = parsed.data;
+  // Zod throws on invalid input -> handled centrally as VALIDATION
+  const { email, password, role } = createUserSchema.parse(req.body);
+
+  // Domain logic in service; may throw AppError.conflict if email exists
   const user = await createUserAdmin(email, password, role);
-  res.status(201).json(ok(user));
+
+  return res.status(201).json(ok(user));
 }
 
 export async function patchUserRole(req: Request, res: Response) {
   const { userId } = req.params;
-  const parsed = updateUserRoleSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
-  const user = await updateUserRole(userId, parsed.data.role);
-  res.json(ok(user));
+  if (!userId) throw AppError.validation('Missing path param: userId');
+
+  const { role } = updateUserRoleSchema.parse(req.body);
+
+  // Service may throw AppError.notFound if user doesn't exist
+  const user = await updateUserRole(userId, role);
+
+  return res.json(ok(user));
 }
