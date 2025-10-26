@@ -1,5 +1,5 @@
 import { prisma } from '../../db/prisma';
-import { paginate } from '../../utils/pagination';
+import { AppError } from '../../errors/AppError';
 import { hashPassword } from '../auth/auth.service';
 
 import type { Prisma, Role } from '@prisma/client';
@@ -48,4 +48,10 @@ export function updateUserRole(userId: string, role: Role) {
     data: { role },
     select: { id: true, email: true, role: true },
   });
+}
+
+export async function getUserById(id: string) {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) throw AppError.notFound('User not found');
+  return user;
 }
