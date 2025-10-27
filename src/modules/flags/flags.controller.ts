@@ -1,3 +1,4 @@
+import { AppError } from '../../errors/AppError';
 import { ok, fail } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 
@@ -9,7 +10,7 @@ import type { Request, Response } from 'express';
 
 export async function evaluate(req: Request, res: Response) {
   const parsed = evaluateSchema.safeParse(req.query);
-  if (!parsed.success) return res.status(400).json(fail('Invalid query', 'VALIDATION'));
+  if (!parsed.success) throw AppError.validation('Invalid query parameters');
   const { featureKey, env, userId } = parsed.data;
   const result = await evaluateFlag(featureKey, env, userId);
   res.json(ok(result));
@@ -18,7 +19,7 @@ export async function evaluate(req: Request, res: Response) {
 export async function putState(req: Request, res: Response) {
   const { featureKey } = req.params;
   const parsed = setStateSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
+  if (!parsed.success) throw AppError.validation('Invalid request body');
 
   const { env, state, rolloutPct } = parsed.data;
   const updated = await setFlagState(featureKey, env, state as FlagState, rolloutPct);

@@ -1,6 +1,6 @@
 import { AppError } from '../../errors/AppError';
 import { buildOrderBy, getPaginationParams } from '../../utils/pagination';
-import { ok, fail } from '../../utils/response';
+import { ok } from '../../utils/response';
 
 import { createUserSchema, updateUserRoleSchema } from './users.schemas';
 import { createUserAdmin, listUsers, updateUserRole } from './users.service';

@@ -2,7 +2,6 @@ import bcrypt from 'bcrypt';
 
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../errors/AppError';
-import { hashPassword } from '../auth/auth.service';
 
 import type { Prisma, Role } from '@prisma/client';
 
@@ -12,8 +11,6 @@ export type ListUsersParams = {
   q?: string;
   orderBy: Prisma.UserOrderByWithRelationInput[]; // already validated/whitelisted by controller
 };
-
-export type ListResult<T> = { items: T[]; total: number };
 
 export async function listUsers(params: ListUsersParams) {
   const { page, pageSize, q, orderBy } = params;

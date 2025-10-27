@@ -1,6 +1,7 @@
 import { FlagState } from '@prisma/client';
 
 import { prisma } from '../../db/prisma';
+import { AppError } from '../../errors/AppError';
 
 function simpleHash(str: string) {
   let h = 0 >>> 0;
@@ -16,24 +17,24 @@ export async function evaluateFlag(featureKey: string, envKey: string, userId?: 
   if (!feature || !env) return { enabled: false };
 
   if (userId) {
-    const ov = await prisma.userOverride.findFirst({
+    const override = await prisma.userOverride.findFirst({
       where: { featureId: feature.id, environmentId: env.id, userId },
     });
-    if (ov) return { enabled: ov.state === FlagState.ON };
+    if (override) return { enabled: override.state === FlagState.ON };
   }
 
-  const fa = await prisma.flagAssignment.findFirst({
+  const flagAssignment = await prisma.flagAssignment.findFirst({
     where: { featureId: feature.id, environmentId: env.id },
   });
-  if (!fa) return { enabled: false };
+  if (!flagAssignment) return { enabled: false };
 
-  if (fa.state === FlagState.ON) return { enabled: true };
-  if (fa.state === FlagState.OFF) return { enabled: false };
+  if (flagAssignment.state === FlagState.ON) return { enabled: true };
+  if (flagAssignment.state === FlagState.OFF) return { enabled: false };
   if (!userId) return { enabled: false };
 
   const bucket = simpleHash(userId) % 100;
-  const pct = fa.rolloutPct ?? 0;
-  return { enabled: bucket < pct };
+  const percentage = flagAssignment.rolloutPct ?? 0;
+  return { enabled: bucket < percentage };
 }
 
 export async function setFlagState(
@@ -46,8 +47,7 @@ export async function setFlagState(
     prisma.feature.findUnique({ where: { key: featureKey } }),
     prisma.environment.findUnique({ where: { key: envKey } }),
   ]);
-  if (!feature || !env)
-    throw Object.assign(new Error('Feature or environment not found'), { status: 404 });
+  if (!feature || !env) throw AppError.notFound('Feature or Environment not found');
 
   const existing = await prisma.flagAssignment.findFirst({
     where: { featureId: feature.id, environmentId: env.id },

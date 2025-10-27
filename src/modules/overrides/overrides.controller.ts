@@ -1,4 +1,5 @@
-import { fail, ok } from '../../utils/response';
+import { AppError } from '../../errors/AppError';
+import { ok } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 
 import { deleteOverrideSchema, upsertOverrideSchema } from './overrides.schemas';
@@ -8,9 +9,10 @@ import type { Request, Response } from 'express';
 
 export async function putOverride(req: Request, res: Response) {
   const parsed = upsertOverrideSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
+  if (!parsed.success) throw AppError.validation('Invalid input');
+
   const { featureKey, env, userId, state } = parsed.data;
-  const ov = await upsertOverride(featureKey, env, userId, state);
+  const override = await upsertOverride(featureKey, env, userId, state);
 
   await createAuditLog({
     actor: req.user!,
@@ -20,12 +22,12 @@ export async function putOverride(req: Request, res: Response) {
     payload: { userId, state },
   });
 
-  res.json(ok(ov));
+  res.json(ok(override));
 }
 
 export async function removeOverride(req: Request, res: Response) {
   const parsed = deleteOverrideSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json(fail('Invalid input', 'VALIDATION'));
+  if (!parsed.success) throw AppError.validation('Invalid input');
   const { featureKey, env, userId } = parsed.data;
   await deleteOverride(featureKey, env, userId);
 
